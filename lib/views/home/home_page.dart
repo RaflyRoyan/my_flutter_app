@@ -1,20 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'dashboard_page.dart';
-import 'profile_page.dart';
-import 'reports_page.dart';
+import '../../controllers/profile/profile_controller.dart';
+import '../../core/session.dart';
+import '../../data/profile/profile_service.dart';
+import '../dashboard/dashboard_page.dart';
+import '../profile/profile_page.dart';
+import '../reports/reports_page.dart';
 
 /// Kerangka utama setelah login, berisi navigasi bawah.
-class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.email});
-
-  final String email;
+/// Setara `_Layout.cshtml` + `NavBar` di web.
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    // Profil dimuat sekali di sini dan dipakai Dashboard & Profil.
+    return ChangeNotifierProvider(
+      create: (context) => ProfileController(
+        context.read<ProfileService>(),
+        context.read<Session>(),
+      )..index(),
+      child: const _HomeView(),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomeView extends StatefulWidget {
+  const _HomeView();
+
+  @override
+  State<_HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<_HomeView> {
   int _index = 0;
 
   @override
@@ -23,11 +42,7 @@ class _HomePageState extends State<HomePage> {
       // IndexedStack menjaga posisi scroll tiap tab saat berpindah.
       body: IndexedStack(
         index: _index,
-        children: [
-          DashboardPage(email: widget.email),
-          const ReportsPage(),
-          ProfilePage(email: widget.email),
-        ],
+        children: const [DashboardPage(), ReportsPage(), ProfilePage()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

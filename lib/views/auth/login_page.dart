@@ -1,24 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'home_page.dart';
+import '../../controllers/auth/login_controller.dart';
+import '../../core/session.dart';
+import '../../data/auth/auth_service.dart';
 
-class LoginPage extends StatefulWidget {
+/// Padanan `Views/Login/Index.cshtml`.
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) =>
+          LoginController(context.read<AuthService>(), context.read<Session>()),
+      child: const _LoginView(),
+    );
+  }
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginView extends StatefulWidget {
+  const _LoginView();
+
+  @override
+  State<_LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<_LoginView> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _nipController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _loading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _nipController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -26,17 +42,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    setState(() => _loading = true);
-
-    // TODO: ganti dengan panggilan API autentikasi yang sebenarnya.
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!mounted) return;
-    setState(() => _loading = false);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => HomePage(email: _emailController.text.trim()),
-      ),
+    // Bila berhasil, Session berubah dan AuthGate di main.dart
+    // otomatis menampilkan HomePage — tidak perlu Navigator di sini.
+    await context.read<LoginController>().doLogin(
+      _nipController.text,
+      _passwordController.text,
     );
   }
 
@@ -49,6 +59,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final controller = context.watch<LoginController>();
+    final message = controller.message ?? context.read<Session>().pesanLogout;
 
     return Scaffold(
       body: Container(
@@ -95,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Masuk untuk melanjutkan ke akun Anda',
+                        'Masuk dengan NIP dan password Anda',
                         textAlign: TextAlign.center,
                         style: text.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
@@ -114,24 +126,23 @@ class _LoginPageState extends State<LoginPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              if (message != null) ...[
+                                _ErrorBanner(message: message),
+                                const SizedBox(height: 16),
+                              ],
                               TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
+                                controller: _nipController,
+                                keyboardType: TextInputType.number,
                                 textInputAction: TextInputAction.next,
-                                autofillHints: const [AutofillHints.email],
+                                autofillHints: const [AutofillHints.username],
                                 decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  hintText: 'nama@email.com',
-                                  prefixIcon: Icon(Icons.email_outlined),
+                                  labelText: 'NIP',
+                                  prefixIcon: Icon(Icons.badge_outlined),
                                 ),
-                                validator: (value) {
-                                  final v = value?.trim() ?? '';
-                                  if (v.isEmpty) return 'Email wajib diisi';
-                                  final ok = RegExp(
-                                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                  ).hasMatch(v);
-                                  return ok ? null : 'Format email tidak valid';
-                                },
+                                validator: (value) =>
+                                    (value?.trim() ?? '').isEmpty
+                                    ? 'NIP wajib diisi.'
+                                    : null,
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
@@ -158,15 +169,10 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ),
                                 ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Password wajib diisi';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password minimal 6 karakter';
-                                  }
-                                  return null;
-                                },
+                                validator: (value) =>
+                                    (value == null || value.isEmpty)
+                                    ? 'Password wajib diisi.'
+                                    : null,
                               ),
                               Align(
                                 alignment: Alignment.centerRight,
@@ -178,14 +184,14 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               const SizedBox(height: 8),
                               FilledButton(
-                                onPressed: _loading ? null : _login,
+                                onPressed: controller.isLoading ? null : _login,
                                 style: FilledButton.styleFrom(
                                   minimumSize: const Size.fromHeight(52),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: _loading
+                                child: controller.isLoading
                                     ? const SizedBox(
                                         width: 22,
                                         height: 22,
@@ -205,22 +211,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Belum punya akun?',
-                            style: text.bodyMedium?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => _showComingSoon('Pendaftaran'),
-                            child: const Text('Daftar'),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -228,6 +218,37 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, color: colors.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: colors.onErrorContainer),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../controllers/profile/profile_controller.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key, required this.email});
-
-  final String email;
+  const DashboardPage({super.key});
 
   // Data contoh — ganti dengan data dari API/database.
   static const _stats = [
@@ -40,7 +41,8 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final name = email.split('@').first;
+    final profile = context.watch<ProfileController>().profile;
+    final name = profile?.nama ?? '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
@@ -86,7 +88,7 @@ class DashboardPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                email,
+                                profile?.jabatan ?? 'Memuat profil...',
                                 style: text.bodyMedium?.copyWith(
                                   color: colors.onPrimary.withValues(
                                     alpha: 0.8,
