@@ -14,7 +14,7 @@ void main() {
     expect(find.text('Password wajib diisi'), findsOneWidget);
   });
 
-  testWidgets('Login valid membuka halaman beranda', (tester) async {
+  testWidgets('Login valid membuka dashboard', (tester) async {
     await tester.pumpWidget(const MyApp());
 
     await tester.enterText(find.byType(TextFormField).at(0), 'user@email.com');
@@ -23,6 +23,24 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    expect(find.text('Halo, user@email.com'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Halo, user 👋'), findsOneWidget);
+    expect(find.text('Ringkasan'), findsOneWidget);
+    expect(find.text('Aktivitas Terbaru'), findsOneWidget);
+
+    await tester.tap(find.text('Laporan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Penjualan 7 Hari Terakhir'), findsOneWidget);
+
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    final logoutButton = find.widgetWithText(OutlinedButton, 'Keluar');
+    await tester.ensureVisible(logoutButton);
+    await tester.pumpAndSettle();
+    await tester.tap(logoutButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selamat Datang'), findsOneWidget);
   });
 }
